@@ -9,10 +9,19 @@ const player = {
 };
 
 const keyboard = {};
+const objects = [];
+const bulletsArr = [];
+let availableBullets = 100;
 
 init();
 
+function refreshBulletsCounter() {
+    document.getElementById('bullets').innerHTML = availableBullets;
+}
+
 function init() {
+    refreshBulletsCounter();
+
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
     scene.add(ambientLight);
 
@@ -40,7 +49,7 @@ function init() {
 
 function createGround() {
     const meshFloor = new THREE.Mesh(
-        new THREE.PlaneGeometry(10, 10, 10, 10),
+        new THREE.PlaneGeometry(100, 100, 10, 10),
         new THREE.MeshPhongMaterial({
             color: 0xffffff,
         })
@@ -53,26 +62,76 @@ function createGround() {
 }
 
 function addBlock() {
-    block = new THREE.Mesh(
-        new THREE.BoxGeometry(1, 1, 1),
-        new THREE.MeshPhongMaterial({
-            color: 0xfff,
-        }),
-    );
+    for (let i=0; i<50; i++) {
+        block = new THREE.Mesh(
+            new THREE.BoxGeometry(1, 1, 1),
+            new THREE.MeshPhongMaterial({
+                color: 0xfff,
+            }),
+        );
+    
+        block.position.x = Math.floor( Math.random() * 20 - 10 ) * 4;
+        block.position.z = Math.floor( Math.random() * 20 - 10 ) * 4;
+        block.position.y += 1;
+    
+        block.castShadow = true;
+        block.receiveShadow = true;
 
-    block.position.y += 1;
-
-    block.castShadow = true;
-    block.receiveShadow = true;
-
-    scene.add(block);
+        scene.add(block);
+        objects.push(block);
+    }
 }
 
+function shoot() {
+    if (availableBullets <= 0) {
+        return false;
+    }   
+
+    var bullet = new THREE.Mesh(
+        new THREE.SphereGeometry(0.05,8,8),
+        new THREE.MeshBasicMaterial({color:0xffffff})
+    );
+
+    bullet.position.x = camera.position.x;
+    bullet.position.y = 1;
+    bullet.position.z = camera.position.z + 1;
+
+    bullet.velocity = new THREE.Vector3(
+        -Math.sin(camera.rotation.y),
+        0,
+        Math.cos(camera.rotation.y)
+    );
+
+    bullet.isActive = true;
+    bulletsArr.push(bullet);    
+    scene.add(bullet);
+
+    setTimeout(() => {
+        bullet.isActive = false;
+        scene.remove(bullet);
+    }, 1000);
+
+    availableBullets--;
+    refreshBulletsCounter();
+}
 
 function gameLoop() {
     renderer.render(scene, camera);
 
-    block.rotation.y += 0.1;
+    for (let i=0; i<bulletsArr.length; i++) {
+        if (bulletsArr[i].isActive) {
+            bulletsArr[i].position.add(bulletsArr[i].velocity);
+        }
+    }
+
+    if (keyboard[32]) {
+        shoot();
+    }
+
+    if (keyboard[82]) {
+        availableBullets = 100;
+        refreshBulletsCounter();
+    }
 
     if (keyboard[87]) {
         camera.position.x -= Math.sin(camera.rotation.y) * player.speed;
@@ -101,7 +160,6 @@ function gameLoop() {
     if (keyboard[39]) {
         camera.rotation.y += player.turnSpeed;
     }
-
 
     requestAnimationFrame(gameLoop);
 }
